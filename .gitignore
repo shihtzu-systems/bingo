@@ -1,0 +1,8 @@
+.DS_Store
+.idea
+out
+bin
+node_modules
+.terraform
+terraform.tfstate*
+.bingo*
