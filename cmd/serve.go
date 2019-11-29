@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/shihtzu-systems/bingo/pkg/bingo"
 	"github.com/shihtzu-systems/bingo/pkg/bingox"
+	"github.com/shihtzu-systems/redix"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -26,11 +27,20 @@ var serveCommand = &cobra.Command{
 		log.Debug("boxes: ", len(themedBoxes))
 
 		bingox.Serve(bingox.ServeArgs{
-			Serial:        fmt.Sprintf("%s+on.%s.at.%s", version, datestamp, timestamp),
-			Trace:         viper.GetBool("system.v1.trace"),
-			Debug:         viper.GetBool("system.v1.debug"),
+			Serial: fmt.Sprintf("%s+on.%s.at.%s", version, datestamp, timestamp),
+			Trace:  viper.GetBool("system.v1.trace"),
+			Debug:  viper.GetBool("system.v1.debug"),
+
 			SessionSecret: []byte(viper.GetString("server.v1.sessionSecret")),
-			Boxes:         themedBoxes,
+			SessionKey:    viper.GetString("server.v1.sessionKey"),
+
+			Redis: redix.Redis{
+				Address:  viper.GetString("redis.v1.address"),
+				Port:     viper.GetInt("redis.v1.port"),
+				Database: viper.GetInt("redis.v1.database"),
+			},
+
+			Boxes: themedBoxes,
 		})
 	},
 }
@@ -40,8 +50,8 @@ func init() {
 	rootCmd.AddCommand(serveCommand)
 }
 
-func christmasBoxes() bingo.Boxes {
-	return bingo.Boxes{
+func christmasBoxes() (out bingo.Boxes) {
+	contents := []string{
 		"Main Character Returns to Small Town",
 		"Storm",
 		"Winter Carnival/Festival",
@@ -77,4 +87,11 @@ func christmasBoxes() bingo.Boxes {
 		"Lighting of the town tree",
 		"No wifi",
 	}
+	for _, content := range contents {
+		out = append(out, bingo.Box{
+			Content: content,
+			Marked:  false,
+		})
+	}
+	return out
 }

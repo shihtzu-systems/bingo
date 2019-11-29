@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/shihtzu-systems/bingo/pkg/bingo"
 	. "github.com/shihtzu-systems/bingo/pkg/bingoctl"
+	"github.com/shihtzu-systems/redix"
 	log "github.com/sirupsen/logrus"
 	"net/http"
 	"os"
@@ -19,8 +20,12 @@ type ServeArgs struct {
 	Debug bool
 
 	SessionSecret []byte
-	Boxes         bingo.Boxes
-	Serial        string
+	SessionKey    string
+
+	Redis redix.Redis
+
+	Boxes  bingo.Boxes
+	Serial string
 }
 
 func Serve(args ServeArgs) {
@@ -36,10 +41,14 @@ func Serve(args ServeArgs) {
 
 	// root controller
 	root := RootController{
+		Redis:        args.Redis,
+		SessionKey:   args.SessionKey,
 		SessionStore: sessionStore,
 		Boxes:        args.Boxes,
 	}
 	r.HandleFunc(RootPath(), root.HandleRoot)
+	r.HandleFunc(RootPath("{letter:[bingo]}", "{index:[0-5]}"), root.HandleMark)
+	r.HandleFunc(RootPath("recycle"), root.HandleRecycle)
 
 	// static
 	r.PathPrefix("/static/").Handler(
