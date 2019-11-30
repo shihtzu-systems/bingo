@@ -15,6 +15,9 @@ type Board struct {
 	N Boxes `json:"n"`
 	G Boxes `json:"g"`
 	O Boxes `json:"o"`
+
+	Bingos  []Bingo `json:"bingos"`
+	Bingoed bool
 }
 
 func (b Board) Print() {
@@ -65,4 +68,15 @@ func (b Boxes) Print(letter string) {
 type Box struct {
 	Content string `json:"content"`
 	Marked  bool   `json:"marked"`
+}
+
+type Bingo struct {
+	Id   string `json:"id"`
+	Type string `json:"type"`
+
+	B []bool `json:"b"`
+	I []bool `json:"i"`
+	N []bool `json:"n"`
+	G []bool `json:"g"`
+	O []bool `json:"o"`
 }

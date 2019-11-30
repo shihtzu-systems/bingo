@@ -4,6 +4,13 @@
   {{ template "header" }}
 
   <section class="section">
+    {{ if .Board.Bingoed }}
+    <div class="container notification center-column">
+      <h1 class="title">Bingo! Bingo! Bingo!</h1>
+      <h2 class="subtitle">You did it</h2>
+    </div>
+    {{ end }}
+
     <div class="container notification">
 
       <div id="bingo" class="has-text-dark">
@@ -12,7 +19,7 @@
           <h1 class="title">B</h1>
         </div>
         {{ range $i, $b := .Board.B }}
-        <div id="b{{ $i }}" onclick="location.href='/b/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
+        <div id="b{{ $i }}" onclick="location.href='/board/{{ $.Board.Id }}/mark/b/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
           {{ $b.Content }}
         </div>
         {{ end }}
@@ -21,7 +28,7 @@
           <h1 class="title">I</h1>
         </div>
           {{ range $i, $b := .Board.I }}
-            <div id="i{{ $i }}" onclick="location.href='/i/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
+            <div id="i{{ $i }}" onclick="location.href='/board/{{ $.Board.Id }}/mark/i/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
               {{ $b.Content }}
             </div>
           {{ end }}
@@ -30,7 +37,7 @@
           <h1 class="title">N</h1>
         </div>
           {{ range $i, $b := .Board.N }}
-            <div id="n{{ $i }}" onclick="location.href='/n/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
+            <div id="n{{ $i }}" onclick="location.href='/board/{{ $.Board.Id }}/mark/n/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
               {{ $b.Content }}
             </div>
           {{ end }}
@@ -39,7 +46,7 @@
           <h1 class="title">G</h1>
         </div>
           {{ range $i, $b := .Board.G }}
-            <div id="g{{ $i }}" onclick="location.href='/g/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
+            <div id="g{{ $i }}" onclick="location.href='/board/{{ $.Board.Id }}/mark/g/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
               {{ $b.Content }}
             </div>
           {{ end }}
@@ -48,23 +55,22 @@
           <h1 class="title">O</h1>
         </div>
           {{ range $i, $b := .Board.O }}
-            <div id="o{{ $i }}" onclick="location.href='/o/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
+            <div id="o{{ $i }}" onclick="location.href='/board/{{ $.Board.Id }}/mark/o/{{ $i }}';" class="is-unselectable bingo-box center {{if $b.Marked }}has-background-danger has-text-white{{ end }}" style="text-align: center; cursor: pointer;">
               {{ $b.Content }}
             </div>
           {{ end }}
 
       </div>
+    </div>
 
-      <div class="hero center">
-        <div class="hero-body">
-          <a class="button is-dark is-outlined" href="/recycle">
+    <div class="container notification center">
+      <a class="button is-dark is-outlined" href="/board/{{ .Board.Id }}/recycle">
                 <span class="icon is-medium">
                   <i class="fas fa-recycle"></i>
                 </span>
-          </a>
-        </div>
-      </div>
+      </a>
     </div>
+
   </section>
 
 {{ end }}

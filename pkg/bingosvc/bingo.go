@@ -9,6 +9,20 @@ import (
 	"time"
 )
 
+func SaveBoardId(sessionId, boardId string, redis redix.Redis) {
+	redis.Connect()
+	defer redis.Disconnect()
+
+	redis.Set(sessionId+":board:id", []byte(boardId))
+}
+
+func GetBoardId(sessionId string, redis redix.Redis) string {
+	redis.Connect()
+	defer redis.Disconnect()
+
+	return redis.Get(sessionId + ":board:id")
+}
+
 func NewBoard(id string, boxes bingo.Boxes) bingo.Board {
 	if len(boxes) < 25 {
 		log.Fatal("not enough boxes to build a bingo board")
@@ -51,4 +65,34 @@ func GetBoard(id string, redis redix.Redis) (out bingo.Board) {
 		log.Fatal(err)
 	}
 	return out
+}
+
+func CheckForBingo(board *bingo.Board) bool {
+	board.Bingos = []bingo.Bingo{}
+	for _, b := range bingos {
+		log.Debugf("[%s] [%s]", b.Type, b.Id)
+		if checkBoxes(b.B, board.B) &&
+			checkBoxes(b.I, board.I) &&
+			checkBoxes(b.N, board.N) &&
+			checkBoxes(b.G, board.G) &&
+			checkBoxes(b.O, board.O) {
+			log.Info("Bingo!")
+			board.Bingos = append(board.Bingos, b)
+		}
+	}
+	log.Debug("bingos: ", len(board.Bingos))
+	board.Bingoed = len(board.Bingos) > 0
+	return board.Bingoed
+}
+
+func checkBoxes(bingos []bool, boxes bingo.Boxes) bool {
+	for i, b := range bingos {
+		if b == false {
+			continue
+		}
+		if !boxes[i].Marked {
+			return false
+		}
+	}
+	return true
 }

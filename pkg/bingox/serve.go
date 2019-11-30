@@ -44,11 +44,20 @@ func Serve(args ServeArgs) {
 		Redis:        args.Redis,
 		SessionKey:   args.SessionKey,
 		SessionStore: sessionStore,
-		Boxes:        args.Boxes,
 	}
 	r.HandleFunc(RootPath(), root.HandleRoot)
-	r.HandleFunc(RootPath("{letter:[bingo]}", "{index:[0-5]}"), root.HandleMark)
-	r.HandleFunc(RootPath("recycle"), root.HandleRecycle)
+
+	// board controller
+	board := BoardController{
+		Redis:        args.Redis,
+		SessionKey:   args.SessionKey,
+		SessionStore: sessionStore,
+		Boxes:        args.Boxes,
+	}
+	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}"), board.HandleRoot)
+	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}", "mark", "{letter:[bingo]}", "{index:[0-4]}"), board.HandleMark)
+	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}", "check"), board.HandleCheck)
+	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}", "recycle"), board.HandleRecycle)
 
 	// static
 	r.PathPrefix("/static/").Handler(
