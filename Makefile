@@ -15,7 +15,7 @@ stamp:
 	printf `/bin/date "+%H%M%S"` > app.timestamp
 	printf "$(version)" > app.version
 
-build: fmt vet test build-binary build-version-container archive
+build: fmt vet test build-binary build-version-container
 
 build-binary:
 	GOOS=linux  GOARCH=amd64 go build -o bin/linux_amd64/$(app)  main.go

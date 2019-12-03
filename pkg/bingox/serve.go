@@ -5,10 +5,15 @@ import (
 	haikunator "github.com/atrox/haikunatorgo/v2"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
+	"github.com/opentracing-contrib/go-gorilla/gorilla"
+	"github.com/opentracing/opentracing-go"
 	"github.com/shihtzu-systems/bingo/pkg/bingo"
 	. "github.com/shihtzu-systems/bingo/pkg/bingoctl"
 	"github.com/shihtzu-systems/redix"
 	log "github.com/sirupsen/logrus"
+	"github.com/uber/jaeger-client-go"
+	"github.com/uber/jaeger-client-go/config"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
@@ -22,7 +27,8 @@ type ServeArgs struct {
 	SessionSecret []byte
 	SessionKey    string
 
-	Redis redix.Redis
+	Redis       redix.Redis
+	TraceConfig config.Configuration
 
 	Boxes  bingo.Boxes
 	Serial string
@@ -31,9 +37,7 @@ type ServeArgs struct {
 func Serve(args ServeArgs) {
 	r := mux.NewRouter()
 
-	if args.Trace {
-		log.SetLevel(log.TraceLevel)
-	} else if args.Debug {
+	if args.Debug {
 		log.SetLevel(log.DebugLevel)
 	}
 
@@ -79,6 +83,19 @@ func Serve(args ServeArgs) {
 		Handler:      r, // Pass our instance of gorilla/mux in.
 	}
 
+	// tracing
+	tracer, closer, _ := args.TraceConfig.NewTracer(
+		config.Logger(jaeger.StdLogger),
+	)
+	defer closer.Close()
+	opentracing.SetGlobalTracer(tracer)
+
+	_ = r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		route.Handler(
+			gorilla.Middleware(opentracing.GlobalTracer(), route.GetHandler()))
+		return nil
+	})
+
 	// listen
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
@@ -95,4 +112,24 @@ func Serve(args ServeArgs) {
 	_ = srv.Shutdown(ctx)
 	log.Info("shutting down ", name)
 	os.Exit(0)
+}
+
+func getTracer() (opentracing.Tracer, io.Closer, error) {
+	//jaeger agent port
+	jaegerHostPort := ":6831"
+
+	cfg := config.Configuration{
+		Sampler: &config.SamplerConfig{
+			Type:  "const",
+			Param: 1,
+		},
+		Reporter: &config.ReporterConfig{
+			LogSpans:            false,
+			BufferFlushInterval: 1 * time.Second,
+			LocalAgentHostPort:  jaegerHostPort,
+		},
+	}
+	return cfg.New(
+		"ExampleTracingMiddleware", //service name
+	)
 }

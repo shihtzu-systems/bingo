@@ -32,7 +32,6 @@ type BoardController struct {
 }
 
 func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
-	log.Debug("handling ", BoardPath("{id}"))
 	vars := mux.Vars(r)
 
 	id := vars["id"]
@@ -51,7 +50,6 @@ func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) HandleMark(w http.ResponseWriter, r *http.Request) {
-	log.Debug("handling ", BoardPath("{id}", "mark", "{letter}", "{index}"))
 	vars := mux.Vars(r)
 
 	id := vars["id"]
@@ -75,7 +73,6 @@ func (c BoardController) HandleMark(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) HandleCheck(w http.ResponseWriter, r *http.Request) {
-	log.Debug("handling ", BoardPath("{id}", "check"))
 	vars := mux.Vars(r)
 
 	id := vars["id"]
@@ -94,7 +91,6 @@ func (c BoardController) HandleCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) HandleRecycle(w http.ResponseWriter, r *http.Request) {
-	log.Debug("handling ", BoardPath("{id}", "recycle"))
 	vars := mux.Vars(r)
 
 	id := vars["id"]

@@ -26,8 +26,6 @@ type RootController struct {
 }
 
 func (c RootController) HandleRoot(w http.ResponseWriter, r *http.Request) {
-	log.Debug("handling ", RootPath())
-
 	sessionId := c.Id(w, r)
 	boardId := bingosvc.GetBoardId(sessionId, c.Redis)
 	if boardId == "" {

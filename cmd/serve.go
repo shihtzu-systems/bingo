@@ -8,6 +8,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/uber/jaeger-client-go/config"
+	"time"
 )
 
 var serveCommand = &cobra.Command{
@@ -28,11 +30,24 @@ var serveCommand = &cobra.Command{
 
 		bingox.Serve(bingox.ServeArgs{
 			Serial: fmt.Sprintf("%s+on.%s.at.%s", version, datestamp, timestamp),
-			Trace:  viper.GetBool("system.v1.trace"),
-			Debug:  viper.GetBool("system.v1.debug"),
+			Debug:  viper.GetBool("system.v2.debug"),
 
 			SessionSecret: []byte(viper.GetString("server.v1.sessionSecret")),
 			SessionKey:    viper.GetString("server.v1.sessionKey"),
+
+			TraceConfig: config.Configuration{
+				ServiceName: viper.GetString("jaeger.v1.serviceName"),
+				Sampler: &config.SamplerConfig{
+					Type:  viper.GetString("jaeger.v1.samplerType"),
+					Param: viper.GetFloat64("jaeger.v1.samplerParam"),
+				},
+				Reporter: &config.ReporterConfig{
+					LogSpans:            false,
+					BufferFlushInterval: 1 * time.Second,
+					LocalAgentHostPort:  viper.GetString("jaeger.v1.agentHostPort"),
+					CollectorEndpoint:   viper.GetString("jaeger.v1.collectorEndpoint"),
+				},
+			},
 
 			Redis: redix.Redis{
 				Address:  viper.GetString("redis.v1.address"),
