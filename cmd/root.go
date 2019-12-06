@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"github.com/shihtzu-systems/bingo/pkg/fsystem"
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"strings"
 )
 
@@ -13,35 +14,40 @@ var datestamp = "20101010"
 var timestamp = "013042"
 
 var configPath string
+var logger *zap.Logger
 
 var rootCmd = &cobra.Command{
 	Use: "bingo",
 }
 
 func Execute() error {
-	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "config file (default is .bingo.yaml)")
 
 	return rootCmd.Execute()
 }
 
-func initConfig() {
+func init() {
+	logger, _ = zap.NewDevelopment(zap.AddStacktrace(zapcore.FatalLevel))
+	cobra.OnInitialize(onInitialize)
+}
+
+func onInitialize() {
 	dout, err := fsystem.ReadFsFile("app.datestamp")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("unable to read file: app.datestamp", zap.Error(err))
 	}
 	datestamp = string(dout)
 
 	tout, err := fsystem.ReadFsFile("app.timestamp")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("unable to read file: app.timestamp", zap.Error(err))
 	}
 	timestamp = string(tout)
 
 	vout, err := fsystem.ReadFsFile("app.version")
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("unable to read file: app.version", zap.Error(err))
 	}
 	version = string(vout)
 
@@ -58,8 +64,23 @@ func initConfig() {
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
-		log.Debugf("Using config file: %s", viper.ConfigFileUsed())
+		logger.Debug("using config file:", zap.Field{
+			Type:   zapcore.StringType,
+			Key:    "config file",
+			String: viper.ConfigFileUsed(),
+		})
 	} else {
-		log.Warn("error occurred while reading config: ", err)
+		logger.Warn("error while reading config file:", zap.Field{
+			Type:   zapcore.StringType,
+			Key:    "config file",
+			String: viper.ConfigFileUsed(),
+		}, zap.Error(err))
 	}
+}
+
+func logError(logger *zap.Logger, err error) error {
+	if err != nil {
+		logger.Error("Error running command", zap.Error(err))
+	}
+	return err
 }

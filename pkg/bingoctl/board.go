@@ -6,10 +6,11 @@ import (
 	"github.com/shihtzu-systems/bingo/pkg/bingo"
 	"github.com/shihtzu-systems/bingo/pkg/bingosvc"
 	"github.com/shihtzu-systems/bingo/pkg/bingoview"
+	"github.com/shihtzu-systems/bingo/pkg/loggerx"
 	"github.com/shihtzu-systems/redix"
+	"go.uber.org/zap"
 	"strconv"
 
-	log "github.com/sirupsen/logrus"
 	"net/http"
 	"path"
 )
@@ -23,7 +24,8 @@ func BoardPath(pieces ...string) string {
 }
 
 type BoardController struct {
-	Redis redix.Redis
+	Logger loggerx.Logger
+	Redis  redix.Redis
 
 	SessionStore sessions.Store
 	SessionKey   string
@@ -37,7 +39,10 @@ func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 	var board bingo.Board
 	if !bingosvc.BoardExists(id, c.Redis) {
-		board = bingosvc.NewBoard(id, c.Boxes)
+		board, err := bingosvc.NewBoard(id, c.Boxes)
+		if err != nil {
+			c.Logger.Fatal("unable to create board", zap.Error(err))
+		}
 		bingosvc.SaveBoard(board, c.Redis)
 	} else {
 		board = bingosvc.GetBoard(id, c.Redis)
@@ -54,20 +59,23 @@ func (c BoardController) HandleMark(w http.ResponseWriter, r *http.Request) {
 
 	id := vars["id"]
 	if !bingosvc.BoardExists(id, c.Redis) {
-		log.Fatal("no board to mark")
+		c.Logger.Fatal("no board to mark")
 	}
 	board := bingosvc.GetBoard(id, c.Redis)
 
 	letter := vars["letter"]
 	i, err := strconv.Atoi(vars["index"])
 	if err != nil {
-		log.Fatal(err)
+		c.Logger.Fatal("unable to convert index string to int", zap.Error(err))
 	}
 
-	log.Debugf("Toggle %s %d", letter, i)
+	c.Logger.Debug("toggle",
+		zap.String("column", letter),
+		zap.Int("row", i))
 	board.Mark(letter, i)
 	bingosvc.SaveBoard(board, c.Redis)
 
+	traceResponseHeaders(r.Context(), w)
 	w.Header().Set("Location", BoardPath(board.Id, "check"))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
@@ -77,15 +85,19 @@ func (c BoardController) HandleCheck(w http.ResponseWriter, r *http.Request) {
 
 	id := vars["id"]
 	if !bingosvc.BoardExists(id, c.Redis) {
-		log.Fatal("no board to check")
+		c.Logger.Fatal("no board to mark")
 	}
 	board := bingosvc.GetBoard(id, c.Redis)
 
-	log.Debugf("Check %s for bingo", board.Id)
+	c.Logger.Debug("check for bingo board",
+		zap.String("id", board.Id))
+
 	bingoed := bingosvc.CheckForBingo(&board)
-	log.Debug("bingo? ", bingoed)
+	c.Logger.Debug("check for bingoed",
+		zap.Bool("bingoed", bingoed))
 	bingosvc.SaveBoard(board, c.Redis)
 
+	traceResponseHeaders(r.Context(), w)
 	w.Header().Set("Location", BoardPath(board.Id))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
@@ -94,9 +106,16 @@ func (c BoardController) HandleRecycle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	id := vars["id"]
-	board := bingosvc.NewBoard(id, c.Boxes)
+	board, err := bingosvc.NewBoard(id, c.Boxes)
+	if err != nil {
+		c.Logger.Fatal("unable to create new board",
+			zap.String("id", id),
+			zap.Int("boxes_count", len(c.Boxes)))
+	}
+
 	bingosvc.SaveBoard(board, c.Redis)
 
+	traceResponseHeaders(r.Context(), w)
 	w.Header().Set("Location", BoardPath(board.Id))
 	w.WriteHeader(http.StatusTemporaryRedirect)
 
@@ -105,7 +124,7 @@ func (c BoardController) HandleRecycle(w http.ResponseWriter, r *http.Request) {
 func (c BoardController) Id(w http.ResponseWriter, r *http.Request) string {
 	store, err := c.SessionStore.Get(r, c.SessionKey)
 	if err != nil {
-		log.Fatal(err)
+		c.Logger.Fatal("error occurred while getting session store", zap.Error(err))
 	}
 
 	name, exists := store.Values["name"]
@@ -114,8 +133,8 @@ func (c BoardController) Id(w http.ResponseWriter, r *http.Request) string {
 		store.Values["name"] = name
 	}
 	if err := store.Save(r, w); err != nil {
-		log.Fatal(err)
+		c.Logger.Fatal("error occurred while saving session store", zap.Error(err))
 	}
-	log.Debug("id: ", store.Values["name"].(string))
+	c.Logger.Debug("checking session", zap.String("name", store.Values["name"].(string)))
 	return store.Values["name"].(string)
 }

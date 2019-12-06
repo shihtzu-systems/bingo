@@ -7,13 +7,12 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/opentracing-contrib/go-gorilla/gorilla"
 	"github.com/opentracing/opentracing-go"
+	"github.com/prometheus/common/log"
 	"github.com/shihtzu-systems/bingo/pkg/bingo"
 	. "github.com/shihtzu-systems/bingo/pkg/bingoctl"
+	"github.com/shihtzu-systems/bingo/pkg/loggerx"
 	"github.com/shihtzu-systems/redix"
-	log "github.com/sirupsen/logrus"
-	"github.com/uber/jaeger-client-go"
-	"github.com/uber/jaeger-client-go/config"
-	"io"
+	"go.uber.org/zap"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,19 +26,17 @@ type ServeArgs struct {
 	SessionSecret []byte
 	SessionKey    string
 
-	Redis       redix.Redis
-	TraceConfig config.Configuration
+	Redis redix.Redis
+
+	Logger loggerx.Logger
 
 	Boxes  bingo.Boxes
 	Serial string
 }
 
 func Serve(args ServeArgs) {
+	logx := args.Logger
 	r := mux.NewRouter()
-
-	if args.Debug {
-		log.SetLevel(log.DebugLevel)
-	}
 
 	sessionStore := sessions.NewCookieStore(args.SessionSecret)
 
@@ -73,8 +70,10 @@ func Serve(args ServeArgs) {
 	namer.TokenLength = 0
 	namer.Delimiter = " "
 	name := namer.Haikunate()
-	log.Printf("starting v%s as %s", args.Serial, name)
-	log.Printf("listening on localhost:8080")
+	logx.Info("starting server",
+		zap.String("serial", args.Serial),
+		zap.String("name", name))
+	logx.Debug("listening on localhost:8080")
 	srv := &http.Server{
 		Addr:         "0.0.0.0:8080",
 		WriteTimeout: time.Second * 15,
@@ -82,13 +81,6 @@ func Serve(args ServeArgs) {
 		IdleTimeout:  time.Second * 60,
 		Handler:      r, // Pass our instance of gorilla/mux in.
 	}
-
-	// tracing
-	tracer, closer, _ := args.TraceConfig.NewTracer(
-		config.Logger(jaeger.StdLogger),
-	)
-	defer closer.Close()
-	opentracing.SetGlobalTracer(tracer)
 
 	_ = r.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 		route.Handler(
@@ -112,24 +104,4 @@ func Serve(args ServeArgs) {
 	_ = srv.Shutdown(ctx)
 	log.Info("shutting down ", name)
 	os.Exit(0)
-}
-
-func getTracer() (opentracing.Tracer, io.Closer, error) {
-	//jaeger agent port
-	jaegerHostPort := ":6831"
-
-	cfg := config.Configuration{
-		Sampler: &config.SamplerConfig{
-			Type:  "const",
-			Param: 1,
-		},
-		Reporter: &config.ReporterConfig{
-			LogSpans:            false,
-			BufferFlushInterval: 1 * time.Second,
-			LocalAgentHostPort:  jaegerHostPort,
-		},
-	}
-	return cfg.New(
-		"ExampleTracingMiddleware", //service name
-	)
 }

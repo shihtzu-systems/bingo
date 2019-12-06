@@ -1,16 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"github.com/shihtzu-systems/bingo/cmd"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
 )
 
 func main() {
-
-	log.SetLevel(log.InfoLevel)
-
 	// setup signal catching
 	signals := make(chan os.Signal, 1)
 	// catch all signals since not explicitly listing
@@ -18,17 +15,17 @@ func main() {
 	// method invoked upon seeing signal
 	go func() {
 		s := <-signals
-		log.Tracef("%s received", s.String())
+		fmt.Printf("%s received", s.String())
 		switch s.String() {
 		case "window size changes":
-			log.Trace("ok")
+			fmt.Printf("ok")
 
 		case "trace/breakpoint trap":
 			fallthrough
 		case "interrupt":
 			fallthrough
 		default:
-			log.Fatalf("stopping!")
+			fmt.Printf("stopping!")
 		}
 	}()
 	// run
