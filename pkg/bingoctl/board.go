@@ -48,6 +48,12 @@ type BoardController struct {
 }
 
 func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
+	c.logx.For(r.Context()).Debug("request",
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("request_uri", r.RequestURI),
+		zap.String("proto", r.Proto))
+
 	vars := mux.Vars(r)
 
 	id := vars["id"]
@@ -92,6 +98,12 @@ func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) HandleMark(w http.ResponseWriter, r *http.Request) {
+	c.logx.For(r.Context()).Debug("request",
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("request_uri", r.RequestURI),
+		zap.String("proto", r.Proto))
+
 	vars := mux.Vars(r)
 
 	id := vars["id"]
@@ -147,6 +159,12 @@ func (c BoardController) HandleMark(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) HandleCheck(w http.ResponseWriter, r *http.Request) {
+	c.logx.For(r.Context()).Debug("request",
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("request_uri", r.RequestURI),
+		zap.String("proto", r.Proto))
+
 	vars := mux.Vars(r)
 
 	id := vars["id"]
@@ -196,6 +214,12 @@ func (c BoardController) HandleCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) HandleRecycle(w http.ResponseWriter, r *http.Request) {
+	c.logx.For(r.Context()).Debug("request",
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("request_uri", r.RequestURI),
+		zap.String("proto", r.Proto))
+
 	vars := mux.Vars(r)
 
 	id := vars["id"]

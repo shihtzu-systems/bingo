@@ -43,6 +43,12 @@ type RootController struct {
 }
 
 func (c RootController) HandleRoot(w http.ResponseWriter, r *http.Request) {
+	c.logx.For(r.Context()).Debug("request",
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("request_uri", r.RequestURI),
+		zap.String("proto", r.Proto))
+
 	sessionId := c.Id(w, r)
 	boardId, err := bingosvc.GetBoardId(sessionId, c.redis)
 	if err != nil {
@@ -68,6 +74,15 @@ func (c RootController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Location", BoardPath(boardId))
 	traceResponseHeaders(r.Context(), w)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+}
+
+func (c RootController) HandlePing(w http.ResponseWriter, r *http.Request) {
+	c.logx.For(r.Context()).Debug("request",
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("request_uri", r.RequestURI),
+		zap.String("proto", r.Proto))
+	w.WriteHeader(http.StatusOK)
 }
 
 func (c RootController) Id(w http.ResponseWriter, r *http.Request) string {

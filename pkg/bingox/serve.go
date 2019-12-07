@@ -2,6 +2,7 @@ package bingox
 
 import (
 	"context"
+	"fmt"
 	haikunator "github.com/atrox/haikunatorgo/v2"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/sessions"
@@ -42,6 +43,7 @@ func Serve(args ServeArgs) {
 	// root controller
 	root := NewRootController(logx, args.Redis, sessionStore, args.SessionKey)
 	r.HandleFunc(RootPath(), root.HandleRoot)
+	r.HandleFunc(RootPath("ping"), root.HandlePing)
 
 	// board controller
 	board := NewBoardController(logx, args.Redis, sessionStore, args.SessionKey, args.Boxes)
@@ -81,9 +83,7 @@ func Serve(args ServeArgs) {
 	// listen
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			logx.Bg().Fatal("interrupting listen and serve",
-				zap.String("serial", args.Serial),
-				zap.String("name", name))
+			fmt.Print(err)
 		}
 	}()
 
