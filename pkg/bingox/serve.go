@@ -28,7 +28,7 @@ type ServeArgs struct {
 
 	Redis redix.Redis
 
-	Logger loggerx.Logger
+	Logger loggerx.Factory
 
 	Boxes  bingo.Boxes
 	Serial string
@@ -70,10 +70,10 @@ func Serve(args ServeArgs) {
 	namer.TokenLength = 0
 	namer.Delimiter = " "
 	name := namer.Haikunate()
-	logx.Info("starting server",
+	logx.Bg().Info("starting server",
 		zap.String("serial", args.Serial),
 		zap.String("name", name))
-	logx.Debug("listening on localhost:8080")
+	logx.Bg().Debug("listening on localhost:8080")
 	srv := &http.Server{
 		Addr:         "0.0.0.0:8080",
 		WriteTimeout: time.Second * 15,

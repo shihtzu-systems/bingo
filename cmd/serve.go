@@ -8,6 +8,7 @@ import (
 	"github.com/shihtzu-systems/bingo/pkg/loggerx"
 	"github.com/shihtzu-systems/bingo/pkg/tracerx"
 	"github.com/shihtzu-systems/redix"
+	"go.uber.org/zap"
 
 	jprom "github.com/uber/jaeger-lib/metrics/prometheus"
 
@@ -55,6 +56,9 @@ var serveCommand = &cobra.Command{
 			Tags: nil,
 		})
 		opentracing.SetGlobalTracer(tracerx.Init("bingo", cfg, metricsFactory, loggerx.NewFactory(logger)))
+
+		zapLogger := logger.With(zap.String("command", "serve"))
+		logger := loggerx.NewFactory(zapLogger)
 
 		// serve
 		bingox.Serve(bingox.ServeArgs{

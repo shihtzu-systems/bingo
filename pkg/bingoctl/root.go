@@ -23,7 +23,7 @@ func RootPath(pieces ...string) string {
 }
 
 type RootController struct {
-	Logger loggerx.Logger
+	Logger loggerx.Factory
 	Redis  redix.Redis
 
 	SessionStore sessions.Store
@@ -34,7 +34,7 @@ func (c RootController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 	sessionId := c.Id(w, r)
 	boardId, err := bingosvc.GetBoardId(sessionId, c.Redis)
 	if err != nil {
-		c.Logger.Fatal("unable to get board", zap.Error(err),
+		c.Logger.For(r.Context()).Fatal("unable to get board", zap.Error(err),
 			zap.String("session_id", sessionId),
 			zap.String("redis_address", c.Redis.Address),
 			zap.Int("redis_port", c.Redis.Port),
@@ -43,9 +43,9 @@ func (c RootController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 
 	if boardId == "" {
 		boardId = generateName()
-		c.Logger.Debug("generated board", zap.String("board_id", boardId))
+		c.Logger.For(r.Context()).Debug("generated board", zap.String("board_id", boardId))
 		if err := bingosvc.SaveBoardId(sessionId, boardId, c.Redis); err != nil {
-			c.Logger.Fatal("unable to save board", zap.Error(err),
+			c.Logger.For(r.Context()).Fatal("unable to save board", zap.Error(err),
 				zap.String("session_id", sessionId),
 				zap.String("board_id", boardId),
 				zap.String("redis_address", c.Redis.Address),
@@ -61,7 +61,7 @@ func (c RootController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 func (c RootController) Id(w http.ResponseWriter, r *http.Request) string {
 	store, err := c.SessionStore.Get(r, c.SessionKey)
 	if err != nil {
-		c.Logger.Fatal("unable to get session", zap.Error(err),
+		c.Logger.For(r.Context()).Fatal("unable to get session", zap.Error(err),
 			zap.String("session_key", c.SessionKey))
 	}
 
@@ -71,10 +71,10 @@ func (c RootController) Id(w http.ResponseWriter, r *http.Request) string {
 		store.Values["name"] = name
 	}
 	if err := store.Save(r, w); err != nil {
-		c.Logger.Fatal("unable to save session store", zap.Error(err),
+		c.Logger.For(r.Context()).Fatal("unable to save session store", zap.Error(err),
 			zap.String("session_key", c.SessionKey))
 	}
-	c.Logger.Debug("checking session", zap.String("name", store.Values["name"].(string)))
+	c.Logger.For(r.Context()).Debug("checking session", zap.String("name", store.Values["name"].(string)))
 	return store.Values["name"].(string)
 }
 
