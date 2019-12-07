@@ -23,14 +23,28 @@ func BoardPath(pieces ...string) string {
 	return path.Join(append([]string{boardBasePath}, pieces...)...)
 }
 
+func NewBoardController(logx loggerx.Factory,
+	redis redix.Redis,
+	sessionStore sessions.Store,
+	sessionKey string,
+	boxes bingo.Boxes) BoardController {
+	return BoardController{
+		logx:         logx,
+		redis:        redis,
+		sessionStore: sessionStore,
+		sessionKey:   sessionKey,
+		boxes:        boxes,
+	}
+}
+
 type BoardController struct {
-	Logger loggerx.Factory
-	Redis  redix.Redis
+	logx  loggerx.Factory
+	redis redix.Redis
 
-	SessionStore sessions.Store
-	SessionKey   string
+	sessionStore sessions.Store
+	sessionKey   string
 
-	Boxes bingo.Boxes
+	boxes bingo.Boxes
 }
 
 func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
@@ -38,36 +52,36 @@ func (c BoardController) HandleRoot(w http.ResponseWriter, r *http.Request) {
 
 	id := vars["id"]
 	var board bingo.Board
-	exists, err := bingosvc.BoardExists(id, c.Redis)
+	exists, err := bingosvc.BoardExists(id, c.redis)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to check if board exists", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to check if board exists", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 	if !exists {
-		board, err := bingosvc.NewBoard(id, c.Boxes)
+		board, err := bingosvc.NewBoard(id, c.boxes)
 		if err != nil {
-			c.Logger.For(r.Context()).Fatal("unable to create new board", zap.Error(err),
+			c.logx.For(r.Context()).Fatal("unable to create new board", zap.Error(err),
 				zap.String("board_id", id),
-				zap.Int("boxes", len(c.Boxes)))
+				zap.Int("boxes", len(c.boxes)))
 		}
-		if err := bingosvc.SaveBoard(board, c.Redis); err != nil {
-			c.Logger.For(r.Context()).Fatal("unable to save board", zap.Error(err),
+		if err := bingosvc.SaveBoard(board, c.redis); err != nil {
+			c.logx.For(r.Context()).Fatal("unable to save board", zap.Error(err),
 				zap.String("board_id", id),
-				zap.String("redis_address", c.Redis.Address),
-				zap.Int("redis_port", c.Redis.Port),
-				zap.Int("redis_database", c.Redis.Database))
+				zap.String("redis_address", c.redis.Address),
+				zap.Int("redis_port", c.redis.Port),
+				zap.Int("redis_database", c.redis.Database))
 		}
 	} else {
-		board, err = bingosvc.GetBoard(id, c.Redis)
+		board, err = bingosvc.GetBoard(id, c.redis)
 		if err != nil {
-			c.Logger.For(r.Context()).Fatal("unable to create new board", zap.Error(err),
+			c.logx.For(r.Context()).Fatal("unable to create new board", zap.Error(err),
 				zap.String("board_id", id),
-				zap.String("redis_address", c.Redis.Address),
-				zap.Int("redis_port", c.Redis.Port),
-				zap.Int("redis_database", c.Redis.Database))
+				zap.String("redis_address", c.redis.Address),
+				zap.Int("redis_port", c.redis.Port),
+				zap.Int("redis_database", c.redis.Database))
 		}
 	}
 
@@ -81,50 +95,50 @@ func (c BoardController) HandleMark(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	id := vars["id"]
-	exists, err := bingosvc.BoardExists(id, c.Redis)
+	exists, err := bingosvc.BoardExists(id, c.redis)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to check if board exists", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to check if board exists", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 	if !exists {
-		c.Logger.For(r.Context()).Fatal("unable to find board", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to find board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
-	board, err := bingosvc.GetBoard(id, c.Redis)
+	board, err := bingosvc.GetBoard(id, c.redis)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to get board", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to get board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
 	letter := vars["letter"]
 	i, err := strconv.Atoi(vars["index"])
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to convert index string to int", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to convert index string to int", zap.Error(err),
 			zap.String("index", vars["index"]),
 			zap.String("column", letter),
 			zap.String("row", vars["index"]))
 	}
 
-	c.Logger.For(r.Context()).Debug("toggle",
+	c.logx.For(r.Context()).Debug("toggle",
 		zap.String("column", letter),
 		zap.Int("row", i))
 	board.Mark(letter, i)
-	if err := bingosvc.SaveBoard(board, c.Redis); err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to save board", zap.Error(err),
+	if err := bingosvc.SaveBoard(board, c.redis); err != nil {
+		c.logx.For(r.Context()).Fatal("unable to save board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
 	traceResponseHeaders(r.Context(), w)
@@ -136,44 +150,44 @@ func (c BoardController) HandleCheck(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	id := vars["id"]
-	exists, err := bingosvc.BoardExists(id, c.Redis)
+	exists, err := bingosvc.BoardExists(id, c.redis)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to check if board exists", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to check if board exists", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 	if !exists {
-		c.Logger.For(r.Context()).Fatal("unable to find board", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to find board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
-	board, err := bingosvc.GetBoard(id, c.Redis)
+	board, err := bingosvc.GetBoard(id, c.redis)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to get board", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to get board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
-	c.Logger.For(r.Context()).Debug("check for bingo board",
+	c.logx.For(r.Context()).Debug("check for bingo board",
 		zap.String("id", board.Id))
 
 	bingoed := bingosvc.CheckForBingo(&board)
-	c.Logger.For(r.Context()).Debug("check for bingoed",
+	c.logx.For(r.Context()).Debug("check for bingoed",
 		zap.Bool("bingoed", bingoed))
 
-	if err := bingosvc.SaveBoard(board, c.Redis); err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to save board", zap.Error(err),
+	if err := bingosvc.SaveBoard(board, c.redis); err != nil {
+		c.logx.For(r.Context()).Fatal("unable to save board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
 	traceResponseHeaders(r.Context(), w)
@@ -185,19 +199,19 @@ func (c BoardController) HandleRecycle(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
 	id := vars["id"]
-	board, err := bingosvc.NewBoard(id, c.Boxes)
+	board, err := bingosvc.NewBoard(id, c.boxes)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to create new board", zap.Error(err),
+		c.logx.For(r.Context()).Fatal("unable to create new board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.Int("boxes", len(c.Boxes)))
+			zap.Int("boxes", len(c.boxes)))
 	}
 
-	if err := bingosvc.SaveBoard(board, c.Redis); err != nil {
-		c.Logger.For(r.Context()).Fatal("unable to save board", zap.Error(err),
+	if err := bingosvc.SaveBoard(board, c.redis); err != nil {
+		c.logx.For(r.Context()).Fatal("unable to save board", zap.Error(err),
 			zap.String("board_id", id),
-			zap.String("redis_address", c.Redis.Address),
-			zap.Int("redis_port", c.Redis.Port),
-			zap.Int("redis_database", c.Redis.Database))
+			zap.String("redis_address", c.redis.Address),
+			zap.Int("redis_port", c.redis.Port),
+			zap.Int("redis_database", c.redis.Database))
 	}
 
 	traceResponseHeaders(r.Context(), w)
@@ -207,9 +221,9 @@ func (c BoardController) HandleRecycle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c BoardController) Id(w http.ResponseWriter, r *http.Request) string {
-	store, err := c.SessionStore.Get(r, c.SessionKey)
+	store, err := c.sessionStore.Get(r, c.sessionKey)
 	if err != nil {
-		c.Logger.For(r.Context()).Fatal("error occurred while getting session store", zap.Error(err))
+		c.logx.For(r.Context()).Fatal("error occurred while getting session store", zap.Error(err))
 	}
 
 	name, exists := store.Values["name"]
@@ -218,8 +232,8 @@ func (c BoardController) Id(w http.ResponseWriter, r *http.Request) string {
 		store.Values["name"] = name
 	}
 	if err := store.Save(r, w); err != nil {
-		c.Logger.For(r.Context()).Fatal("error occurred while saving session store", zap.Error(err))
+		c.logx.For(r.Context()).Fatal("error occurred while saving session store", zap.Error(err))
 	}
-	c.Logger.For(r.Context()).Debug("checking session", zap.String("name", store.Values["name"].(string)))
+	c.logx.For(r.Context()).Debug("checking session", zap.String("name", store.Values["name"].(string)))
 	return store.Values["name"].(string)
 }

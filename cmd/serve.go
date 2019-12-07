@@ -139,7 +139,6 @@ func Init(serviceName string, metricsFactory metrics.Factory, logger loggerx.Fac
 			Param: 1,
 		},
 	}
-	// TODO(ys) a quick hack to ensure random generators get different seeds, which are based on current time.
 	time.Sleep(100 * time.Millisecond)
 	jaegerLogger := jaegerLoggerAdapter{logger.Bg()}
 	var sender jaeger.Transport

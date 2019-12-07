@@ -7,7 +7,6 @@ import (
 	"github.com/gorilla/sessions"
 	"github.com/opentracing-contrib/go-gorilla/gorilla"
 	"github.com/opentracing/opentracing-go"
-	"github.com/prometheus/common/log"
 	"github.com/shihtzu-systems/bingo/pkg/bingo"
 	. "github.com/shihtzu-systems/bingo/pkg/bingoctl"
 	"github.com/shihtzu-systems/bingo/pkg/loggerx"
@@ -41,20 +40,11 @@ func Serve(args ServeArgs) {
 	sessionStore := sessions.NewCookieStore(args.SessionSecret)
 
 	// root controller
-	root := RootController{
-		Redis:        args.Redis,
-		SessionKey:   args.SessionKey,
-		SessionStore: sessionStore,
-	}
+	root := NewRootController(logx, args.Redis, sessionStore, args.SessionKey)
 	r.HandleFunc(RootPath(), root.HandleRoot)
 
 	// board controller
-	board := BoardController{
-		Redis:        args.Redis,
-		SessionKey:   args.SessionKey,
-		SessionStore: sessionStore,
-		Boxes:        args.Boxes,
-	}
+	board := NewBoardController(logx, args.Redis, sessionStore, args.SessionKey, args.Boxes)
 	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}"), board.HandleRoot)
 	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}", "mark", "{letter:[bingo]}", "{index:[0-4]}"), board.HandleMark)
 	r.HandleFunc(BoardPath("{id:[a-z0-9-]+}", "check"), board.HandleCheck)
@@ -91,7 +81,9 @@ func Serve(args ServeArgs) {
 	// listen
 	go func() {
 		if err := srv.ListenAndServe(); err != nil {
-			log.Error(err)
+			logx.Bg().Fatal("interrupting listen and serve",
+				zap.String("serial", args.Serial),
+				zap.String("name", name))
 		}
 	}()
 
@@ -102,6 +94,8 @@ func Serve(args ServeArgs) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 	defer cancel()
 	_ = srv.Shutdown(ctx)
-	log.Info("shutting down ", name)
+	logx.Bg().Debug("shutting down",
+		zap.String("serial", args.Serial),
+		zap.String("name", name))
 	os.Exit(0)
 }
