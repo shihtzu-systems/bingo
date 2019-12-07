@@ -30,6 +30,11 @@ type spanLogger struct {
 	span   opentracing.Span
 }
 
+func (sl spanLogger) Debug(msg string, fields ...zapcore.Field) {
+	sl.logToSpan("debug", msg, fields...)
+	sl.logger.Debug(msg, fields...)
+}
+
 func (sl spanLogger) Info(msg string, fields ...zapcore.Field) {
 	sl.logToSpan("info", msg, fields...)
 	sl.logger.Info(msg, fields...)
